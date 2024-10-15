@@ -1,0 +1,280 @@
+```{r}
+# Code to read data in
+help("library")
+library("tidyverse")
+
+#Replace path with your own path
+crash <- read_csv("/Users/ryancabral/Documents/CMPT 491/Datasets/California_Traffic_Data_Filtered_V4.csv")
+problems()
+crash
+```
+
+```{r}
+# Code to clean data
+library(readr)
+# Filter the dataset for a specific state
+state_name <- "CA"
+filtered_data <- crash[crash$State == state_name,]
+filtered_data[c("Source", "End_Lat", "End_Lng", "Country", "Timezone", 
+                "Turning_Loop")] <- NULL
+
+# False -> 0, True -> 1
+filtered_data$Amenity <- as.integer(as.logical(filtered_data$Amenity))
+filtered_data$Bump <- as.integer(as.logical(filtered_data$Bump))
+filtered_data$Crossing <- as.integer(as.logical(filtered_data$Crossing))
+filtered_data$Give_Way <- as.integer(as.logical(filtered_data$Give_Way))
+filtered_data$Junction <- as.integer(as.logical(filtered_data$Junction))
+filtered_data$No_Exit <- as.integer(as.logical(filtered_data$No_Exit))
+filtered_data$Railway <- as.integer(as.logical(filtered_data$Railway))
+filtered_data$Roundabout <- as.integer(as.logical(filtered_data$Roundabout))
+filtered_data$Station <- as.integer(as.logical(filtered_data$Station))
+filtered_data$Stop <- as.integer(as.logical(filtered_data$Stop))
+filtered_data$Traffic_Calming <- as.integer(as.logical(filtered_data$Traffic_Calming))
+filtered_data$Traffic_Signal <- as.integer(as.logical(filtered_data$Traffic_Calming))
+
+# Day -> 0, Night -> 1
+filtered_data$Sunrise_Sunset <- ifelse(filtered_data$Sunrise_Sunset == "Day", 0, 1)
+filtered_data$Civil_Twilight <- ifelse(filtered_data$Civil_Twilight == "Day", 0, 1)
+filtered_data$Nautical_Twilight <- ifelse(filtered_data$Nautical_Twilight == "Day", 0, 1)
+filtered_data$Astronomical_Twilight <- ifelse(filtered_data$Astronomical_Twilight == "Day", 0, 1)
+
+# Remove rows that have N/A Precipitation as their weather condition
+filtered_data <- filtered_data[filtered_data$Weather_Condition != "N/A Precipitation", ]
+
+# Assuming filtered_data is your data frame
+filtered_data$`Wind_Chill(F)`[is.na(filtered_data$`Wind_Chill(F)`)] <- filtered_data$`Temperature(F)`[is.na(filtered_data$`Wind_Chill(F)`)]
+
+
+filtered_data$Weather_Condition <- ifelse(grepl("Drizzle", filtered_data$Weather_Condition, ignore.case = TRUE), 
+                                          "Drizzle", 
+                                          ifelse(grepl("Thunder|T-Storm", filtered_data$Weather_Condition, ignore.case = TRUE), 
+                                                 "Thunder", 
+                                          ifelse(grepl("Blowing", filtered_data$Weather_Condition, ignore.case = TRUE), 
+                                                  "Blowing",
+                                          ifelse(grepl("Light Rain|Rain Shower", filtered_data$Weather_Condition,ignore.case = TRUE), 
+                                                 "Light Rain", 
+                                          ifelse(grepl("Dust|Sand|Smoke|Volcanic Ash", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                                  "Dust", 
+                                          ifelse(grepl("Fair", filtered_data$Weather_Condition, ignore.case = TRUE), 
+                                                  "Fair", 
+                                          ifelse(grepl("Snow", filtered_data$Weather_Condition, ignore.case = TRUE), 
+                                                  "Snow", 
+                                          ifelse(grepl("Hail", filtered_data$Weather_Condition, ignore.case = TRUE), 
+                                                  "Hail",
+                                          ifelse(grepl("Cloudy", filtered_data$Weather_Condition, ignore.case = TRUE), 
+                                                 "Cloudy",
+                                          ifelse(grepl("Fog", filtered_data$Weather_Condition, ignore.case = TRUE), 
+                                                  "Fog",
+                                          ifelse(grepl("Haze", filtered_data$Weather_Condition, ignore.case = TRUE), 
+                                                  "Haze",
+                                          ifelse(grepl("Heavy Rain", filtered_data$Weather_Condition, ignore.case = TRUE), 
+                                                  "Heavy Rain",
+                                          ifelse(grepl("Mist", filtered_data$Weather_Condition, ignore.case = TRUE), 
+                                                  "Mist",
+                                          ifelse(grepl("Mostly Cloudy",filtered_data$Weather_Condition,ignore.case = TRUE),
+                                                  "Mostly Cloudy",
+                                          ifelse(grepl("Partly Cloudy",filtered_data$Weather_Condition,ignore.case = TRUE),
+                                                  "Partly Cloudy",
+                                          ifelse(grepl("Rain", filtered_data$Weather_Condition, ignore.case = TRUE), 
+                                                  "Rain",
+                                          ifelse(grepl("Squalls", filtered_data$Weather_Condition, ignore.case = TRUE), 
+                                                  "Squalls",
+                                          ifelse(grepl("Wintry Mix", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                                 "Wintry Mix",
+                                          filtered_data$Weather_Condition))))))))))))))))))
+
+filtered_data$Weather_Condition <- ifelse(grepl("Clear", filtered_data$Weather_Condition, ignore.case = TRUE), 
+                                          1, 
+                                   ifelse(grepl("Fair", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          2,
+                                   ifelse(grepl("Overcast", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          3,
+                                   ifelse(grepl("Cloudy", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          4,
+                                   ifelse(grepl("Scattered Clouds", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          5,
+                                   ifelse(grepl("Mist", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          6,       
+                                   ifelse(grepl("Drizzle", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          7,
+                                   ifelse(grepl("Showers in the Vicinity", filtered_data$Weather_Condition, ignore.case = TRUE), 
+                                          8,
+                                   ifelse(grepl("Light Rain", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          9,
+                                   ifelse(grepl("Heavy Rain", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          11,
+                                   ifelse(grepl("Rain", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          10,
+                                   ifelse(grepl("Hail", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          12,
+                                   ifelse(grepl("Snow", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          13,
+                                   ifelse(grepl("Wintry Mix", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          14,
+                                   ifelse(grepl("Fog", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          15,
+                                   ifelse(grepl("Haze", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          16,
+                                   ifelse(grepl("Dust", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          17,
+                                   ifelse(grepl("Squalls", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          18,
+                                   ifelse(grepl("Blowing", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          19,
+                                   ifelse(grepl("Thunder", filtered_data$Weather_Condition, ignore.case = TRUE),
+                                          20,
+                                   filtered_data$Weather_Condition))))))))))))))))))))
+
+# Check the result:
+table(filtered_data$Weather_Condition)
+
+#Write the data to a file
+write_csv(filtered_data,"~/California_Traffic_Data_Filtered.csv")
+
+```
+```{r}
+# Run PCA analysis
+library(dplyr)
+
+#Replace path with your own path
+crash_filter <- read_csv("/Users/ryancabral/Documents/CMPT 491/Datasets/California_Traffic_Data_Filtered.csv")
+smallCrashTable <- crash_filter %>% select(ID, Severity, `Distance(mi)`, `Temperature(F)`, 
+                                           `Wind_Chill(F)`, `Humidity(%)`, `Pressure(in)`,
+                                           `Visibility(mi)`, `Wind_Speed(mph)`, `Precipitation(in)`,
+                                           Weather_Condition, Amenity, Bump, Crossing, Give_Way,
+                                           Junction, No_Exit, Railway, Roundabout, Station, Stop,
+                                           Traffic_Calming, Traffic_Signal)
+# Remove rows with NA values
+smallCrashTable <- na.omit(smallCrashTable)
+
+#str(smallCrashTable)
+
+#Run PCA Analysis
+pca <- prcomp(smallCrashTable[2:ncol(smallCrashTable)], scale. = TRUE, center = TRUE)
+summary(pca)
+```
+
+```{r}
+# Calculate correlation matrix
+correlation_matrix <- cor(smallCrashTable[2:ncol(smallCrashTable)], use = "complete.obs")
+print(correlation_matrix)
+
+
+```
+
+```{r}
+# Load necessary packages
+#install.packages("rpart")
+#install.packages("rpart.plot")
+
+library(rpart)
+library(rpart.plot)
+
+traffic_data <- read.csv("/Users/ryancabral/Documents/CMPT 491/Datasets/California_Traffic_data_Sample.csv")
+
+# 2. Create a decision tree model predicting Severity
+tree_model <- rpart(Severity ~ Temperature.F. + Humidity... + Visibility.mi. + 
+                    Wind_Speed.mph. + Precipitation.in. + Weather_Condition + City, 
+                    data = traffic_data, method = "class")
+
+# 3. Visualize the decision tree
+rpart.plot(tree_model)
+
+# 4. Make predictions (if needed)
+predictions <- predict(tree_model, traffic_data, type = "class")
+
+# 5. Evaluate using a confusion matrix
+table(Predicted = predictions, Actual = traffic_data$Severity)
+
+```
+
+```{r}
+# 1. Install and load necessary packages
+install.packages("rpart")       # Recursive Partitioning and Regression Trees
+install.packages("rpart.plot")  # For visualizing the decision tree
+
+library(rpart)
+library(rpart.plot)
+
+# 2. Load the iris dataset (it’s a built-in dataset)
+data(iris)
+
+# 3. Fit a decision tree model
+# Here we are predicting the Species based on other features
+tree_model <- rpart(Species ~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width, 
+                    data = iris, method = "class")
+
+# 4. Print the decision tree structure
+print(tree_model)
+
+# 5. Visualize the decision tree
+rpart.plot(tree_model)
+
+# 6. Make predictions using the model on the training dataset
+predictions <- predict(tree_model, newdata = iris, type = "class")
+
+# 7. Evaluate the model (e.g., check the first few predictions)
+head(predictions)
+
+# 8. Confusion matrix to evaluate model accuracy
+table(Predicted = predictions, Actual = iris$Species)
+
+```
+```{r}
+library(tidyverse)
+
+school_data <- read_csv("/Users/ryancabral/Documents/CMPT 491/Datasets/Cleaned_SchoolSites_23-24.csv")
+```
+
+```{r}
+# Install and load the necessary package
+if (!requireNamespace("geosphere", quietly = TRUE)) {
+  install.packages("geosphere")
+}
+library(geosphere)
+
+# Function to calculate distances and add new columns in chunks
+add_distance_info_chunked <- function(filtered_data, school_data, chunk_size = 10000) {
+  # Initialize columns
+  filtered_data$school_within_1mi <- FALSE
+  filtered_data$school_within_0.5mi <- FALSE
+  filtered_data$school_within_0.25mi <- FALSE
+  filtered_data$nearest_school_id <- NA
+  filtered_data$nearest_school_distance <- Inf
+  
+  total_rows <- nrow(filtered_data)
+  
+  for (start in seq(1, total_rows, by = chunk_size)) {
+    end <- min(start + chunk_size - 1, total_rows)
+    chunk <- filtered_data[start:end, ]
+    
+    coords_data <- cbind(chunk$Start_Lng, chunk$Start_Lat)
+    coords_schools <- cbind(school_data$Longitude, school_data$Latitude)
+    
+    distance_matrix <- distm(coords_data, coords_schools, fun = distGeo)
+    
+    chunk$school_within_1mi <- apply(distance_matrix, 1, function(distances) any(distances <= 1609.34))
+    chunk$school_within_0.5mi <- apply(distance_matrix, 1, function(distances) any(distances <= 804.67))
+    chunk$school_within_0.25mi <- apply(distance_matrix, 1, function(distances) any(distances <= 402.34))
+    
+    nearest_indices <- apply(distance_matrix, 1, which.min)
+    chunk$nearest_school_id <- school_data$OBJECTID[nearest_indices]
+    chunk$nearest_school_distance <- apply(distance_matrix, 1, min)
+    
+    filtered_data[start:end, ] <- chunk
+  }
+  
+  return(filtered_data)
+}
+
+# Check if filtered_data and school_data are correctly loaded
+if (nrow(filtered_data) > 0 & nrow(school_data) > 0) {
+  filtered_data <- add_distance_info_chunked(filtered_data, school_data)
+} else {
+  stop("Dataframes are empty or not loaded correctly.")
+}
+
+# View the updated data
+print(head(filtered_data))
+
+```
