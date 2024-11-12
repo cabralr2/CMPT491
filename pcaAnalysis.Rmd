@@ -1,0 +1,103 @@
+```{r}
+install.packages("ggplot2")
+install.packages("ggfortify")
+```
+
+```{r}
+library(ggplot2)
+library(ggfortify)
+library(dplyr)
+library(readr)
+
+# Read multiple CSV files into a list
+file_list <- list.files(path = "/Users/ryancabral/Documents/CMPT 491/Datasets/CityData", pattern = "*.csv", full.names = TRUE)
+data_list <- lapply(file_list, read_csv)
+
+# Merge all data frames in the list into one data frame
+cityData <- bind_rows(data_list)
+
+cityData <- cityData %>%
+  mutate(
+    start_time = as.POSIXct(paste(Date_Start, Time_Start), format = "%Y-%m-%d %H:%M:%S"),
+    end_time = as.POSIXct(paste(Date_End, Time_End), format = "%Y-%m-%d %H:%M:%S"),
+    time_difference = as.numeric(difftime(end_time, start_time, units = "mins"))
+  )
+
+cityData <- cityData %>% mutate(Time_Start = as.POSIXct(Time_Start))
+cityData <- cityData %>%
+  mutate(Hour = format(Time_Start, "%H") %>% as.integer(),
+         Time_Bin = cut(Hour, breaks = seq(0, 24, by = 3), include.lowest = TRUE, right = FALSE, labels = FALSE))
+
+sacramentoData <- cityData %>% filter(City == "Sacramento")
+sanDiegoData <-  cityData %>% filter(City == "San Diego")
+losAngelesData <- cityData %>% filter(City == "Los Angeles")
+anaheimData <- cityData %>% filter(City == "Anaheim")
+sanFranciscoData <- cityData %>% filter(City == "San Francisco")
+
+# Display the merged data frame
+print(cityData)
+```
+```{r}
+# Identify columns with zero variance
+zero_variance_cols <- sapply(cityData, function(x) var(x, na.rm = TRUE) == 0)
+
+# Display the names of columns with zero variance
+names(zero_variance_cols[zero_variance_cols])
+
+#cityData <- subset(cityData, select = -Sunrise_Sunset)
+#cityData <- subset(cityData, select = -Civil_Twilight)
+#cityData <- subset(cityData, select = -Nautical_Twilight)
+#cityData <- subset(cityData, select = -Astronomical_Twilight)
+cityData <- subset(cityData, select = -Description)
+cityData <- subset(cityData, select = -Zipcode)
+
+# Identify columns with zero variance
+zero_variance_cols <- sapply(cityData, function(x) var(x, na.rm = TRUE) == 0)
+
+# Display the names of columns with zero variance
+names(zero_variance_cols[zero_variance_cols])
+```
+
+```{r}
+# Check for non-numeric columns
+non_numeric_cols <- sapply(cityData, function(x) !is.numeric(x))
+non_numeric_cols
+
+# Convert non-numeric columns to numeric if possible
+cityData[non_numeric_cols] <- lapply(cityData[non_numeric_cols], function(x) as.numeric(as.character(x)))
+
+# Remove columns with all NA values
+cityData <- cityData[, colSums(is.na(cityData)) < nrow(cityData)]
+
+# Scale the data
+cityDataScaled <- scale(cityData)
+
+# Perform PCA
+pca_result <- prcomp(cityDataScaled, center = TRUE, scale. = TRUE)
+
+# Summarize PCA results
+summary(pca_result)
+
+autoplot(pca_result, cityData = cityData)
+screeplot(pca_result, type = "lines", main = "Scree Plot")
+
+#BiPlot
+autoplot(pca_result, data = cityData)
+
+
+# Extract the loadings (rotation matrix)
+loadings <- pca_result$rotation
+
+# Convert the loadings to a data frame for plotting
+loadings_df <- as.data.frame(loadings)
+loadings_df$Variable <- rownames(loadings_df)
+
+# Create the loadings plot
+ggplot(loadings_df, aes(x = PC1, y = PC2, label = Variable)) +
+  geom_point() +
+  geom_text(vjust = 1, hjust = 1) +
+  ggtitle("Loadings Plot") +
+  xlab("Principal Component 1") +
+  ylab("Principal Component 2")
+```
+
