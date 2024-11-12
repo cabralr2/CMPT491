@@ -1,0 +1,573 @@
+```{r}
+library(dplyr)
+library(readr)
+
+# Read multiple CSV files into a list
+file_list <- list.files(path = "/Users/ryancabral/Documents/CMPT 491/Datasets/CityData", pattern = "*.csv", full.names = TRUE)
+data_list <- lapply(file_list, read_csv)
+
+# Merge all data frames in the list into one data frame
+cityData <- bind_rows(data_list)
+
+cityData <- cityData %>%
+  mutate(
+    start_time = as.POSIXct(paste(Date_Start, Time_Start), format = "%Y-%m-%d %H:%M:%S"),
+    end_time = as.POSIXct(paste(Date_End, Time_End), format = "%Y-%m-%d %H:%M:%S"),
+    time_difference = as.numeric(difftime(end_time, start_time, units = "mins"))
+  )
+
+cityData <- cityData %>% mutate(Time_Start = as.POSIXct(Time_Start))
+cityData <- cityData %>%
+  mutate(Hour = format(Time_Start, "%H") %>% as.integer(),
+         Time_Bin = cut(Hour, breaks = seq(0, 24, by = 3), include.lowest = TRUE, right = FALSE, labels = FALSE))
+
+sacramentoData <- cityData %>% filter(City == "Sacramento")
+sanDiegoData <-  cityData %>% filter(City == "San Diego")
+losAngelesData <- cityData %>% filter(City == "Los Angeles")
+anaheimData <- cityData %>% filter(City == "Anaheim")
+sanFranciscoData <- cityData %>% filter(City == "San Francisco")
+
+# Display the merged data frame
+print(cityData)
+```
+
+
+```{r}
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+
+# Function to fit a decision tree model and make predictions
+weatherTree <- function(data, dataset_name) {
+  # Select only the relevant columns
+  selected_columns <- data %>% 
+    select(Severity, `Temperature(F)`, `Visibility(mi)`, `Wind_Speed(mph)`, `Weather_Condition`)  
+  
+  # Fit the decision tree model with the selected columns
+  tree_model <- rpart(Severity ~ ., data = selected_columns)
+  
+  # Plot the decision tree with labels
+  main_title <- paste("Decision Tree for", dataset_name)
+  rpart.plot(tree_model, type = 1, extra = 101, main = main_title)  # extra = 101 shows the number of observations
+  
+  # Make predictions
+  predictions <- predict(tree_model, selected_columns)
+  
+  # Display the first few predictions
+  print(head(predictions))
+  
+  # Create a table to compare predicted and actual values
+  comparison_table <- table(Predicted = round(predictions), Actual = data$Severity)
+  
+  return(comparison_table)
+}
+
+comparison_table <- weatherTree(cityData, "California")
+print(comparison_table)
+
+comparison_table <- weatherTree(anaheimData, "Anaheim")
+print(comparison_table)
+
+comparison_table <- weatherTree(sacramentoData, "Sacramento")
+print(comparison_table)
+
+comparison_table <- weatherTree(sanDiegoData, "San Diego")
+print(comparison_table)
+
+comparison_table <- weatherTree(sanFranciscoData, "San Francisco")
+print(comparison_table)
+
+comparison_table <- weatherTree(losAngelesData, "Los Angeles")
+print(comparison_table)
+```
+```{r}
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+
+# Function to fit a decision tree model and make predictions
+POITree <- function(data, dataset_name) {
+  # Select only the relevant columns
+  selected_columns <- data %>% 
+    select(Severity, Amenity, Bump, Crossing, Give_Way, Junction, No_Exit, Railway, Roundabout, Station)
+  
+  # Fit the decision tree model with the selected columns
+  tree_model <- rpart(Severity ~ ., data = selected_columns)
+  
+  # Plot the decision tree with labels
+  main_title <- paste("Decision Tree for", dataset_name)
+  rpart.plot(tree_model, type = 1, extra = 101, main = main_title)  # extra = 101 shows the number of observations
+  
+  # Make predictions
+  predictions <- predict(tree_model, selected_columns)
+  
+  # Display the first few predictions
+  print(head(predictions))
+  
+  # Create a table to compare predicted and actual values
+  comparison_table <- table(Predicted = round(predictions), Actual = data$Severity)
+  
+  return(comparison_table)
+}
+
+comparison_table <- POITree(cityData, "California")
+print(comparison_table)
+
+comparison_table <- POITree(anaheimData, "Anaheim")
+print(comparison_table)
+
+comparison_table <- POITree(sacramentoData, "Sacramento")
+print(comparison_table)
+
+comparison_table <- POITree(sanDiegoData, "San Diego")
+print(comparison_table)
+
+comparison_table <- POITree(sanFranciscoData, "San Francisco")
+print(comparison_table)
+
+comparison_table <- POITree(losAngelesData, "Los Angeles")
+print(comparison_table)
+```
+```{r}
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+
+# Function to fit a decision tree model and make predictions
+signalTree <- function(data, dataset_name) {
+  # Select only the relevant columns
+  selected_columns <- data %>% 
+    select(Severity, Stop, Traffic_Signal)  
+  
+  # Fit the decision tree model with the selected columns
+  tree_model <- rpart(Severity ~ ., data = selected_columns)
+  
+  # Plot the decision tree with labels
+  main_title <- paste("Decision Tree for", dataset_name)
+  rpart.plot(tree_model, type = 1, extra = 101, main = main_title)  # extra = 101 shows the number of observations
+  
+  # Make predictions
+  predictions <- predict(tree_model, selected_columns)
+  
+  # Display the first few predictions
+  print(head(predictions))
+  
+  # Create a table to compare predicted and actual values
+  comparison_table <- table(Predicted = round(predictions), Actual = data$Severity)
+  
+  return(comparison_table)
+}
+
+comparison_table <- signalTree(cityData, "California")
+print(comparison_table)
+
+comparison_table <- signalTree(anaheimData, "Anaheim")
+print(comparison_table)
+
+comparison_table <- signalTree(sacramentoData, "Sacramento")
+print(comparison_table)
+
+comparison_table <- signalTree(sanDiegoData, "San Diego")
+print(comparison_table)
+
+comparison_table <- signalTree(sanFranciscoData, "San Francisco")
+print(comparison_table)
+
+comparison_table <- signalTree(losAngelesData, "Los Angeles")
+print(comparison_table)
+```
+
+```{r}
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+
+# Function to fit a decision tree model and make predictions
+schoolTree <- function(data, dataset_name) {
+  # Select only the relevant columns
+  selected_columns <- data %>% 
+    select(Severity, nearest_school_distance)  
+  
+  # Fit the decision tree model with the selected columns
+  tree_model <- rpart(Severity ~ ., data = selected_columns)
+  
+  # Plot the decision tree with labels
+  main_title <- paste("Decision Tree for", dataset_name)
+  rpart.plot(tree_model, type = 1, extra = 101, main = main_title)  # extra = 101 shows the number of observations
+  
+  # Make predictions
+  predictions <- predict(tree_model, selected_columns)
+  
+  # Display the first few predictions
+  print(predictions)
+  
+  # Create a table to compare predicted and actual values
+  comparison_table <- table(Predicted = round(predictions), Actual = data$Severity)
+  
+  return(comparison_table)
+}
+
+comparison_table <- schoolTree(cityData, "California")
+print(comparison_table)
+
+comparison_table <- schoolTree(anaheimData, "Anaheim")
+print(comparison_table)
+
+comparison_table <- schoolTree(sacramentoData, "Sacramento")
+print(comparison_table)
+
+comparison_table <- schoolTree(sanDiegoData, "San Diego")
+print(comparison_table)
+
+comparison_table <- schoolTree(sanFranciscoData, "San Francisco")
+print(comparison_table)
+
+comparison_table <- schoolTree(losAngelesData, "Los Angeles")
+print(comparison_table)
+```
+
+```{r}
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+
+# Function to fit a decision tree model and make predictions
+timeTree <- function(data, dataset_name) {
+  # Select only the relevant columns
+  selected_columns <- data %>% 
+    select(Severity, time_difference)  
+  
+  # Fit the decision tree model with the selected columns
+  tree_model <- rpart(Severity ~ ., data = selected_columns)
+  
+  # Plot the decision tree with labels
+  main_title <- paste("Decision Tree for", dataset_name)
+  rpart.plot(tree_model, type = 1, extra = 101, main = main_title)  # extra = 101 shows the number of observations
+  
+  # Make predictions
+  predictions <- predict(tree_model, selected_columns)
+  
+  # Display the first few predictions
+  print(head(predictions))
+  
+  # Create a table to compare predicted and actual values
+  comparison_table <- table(Predicted = round(predictions), Actual = data$Severity)
+  
+  return(comparison_table)
+}
+
+comparison_table <- timeTree(cityData, "California")
+print(comparison_table)
+
+comparison_table <- timeTree(anaheimData, "Anaheim")
+print(comparison_table)
+
+comparison_table <- timeTree(sacramentoData, "Sacramento")
+print(comparison_table)
+
+comparison_table <- timeTree(sanDiegoData, "San Diego")
+print(comparison_table)
+
+comparison_table <- timeTree(sanFranciscoData, "San Francisco")
+print(comparison_table)
+
+comparison_table <- timeTree(losAngelesData, "Los Angeles")
+print(comparison_table)
+```
+
+```{r}
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+
+# Function to fit a decision tree model and make predictions
+timeWeatherTree <- function(data, dataset_name) {
+  # Select only the relevant columns
+  selected_columns <- data %>% 
+    select(Severity, time_difference, `Temperature(F)`, `Visibility(mi)`, `Wind_Speed(mph)`, `Weather_Condition`)  
+  
+  # Fit the decision tree model with the selected columns
+  tree_model <- rpart(Severity ~ ., data = selected_columns)
+  
+  # Plot the decision tree with labels
+  main_title <- paste("Decision Tree for", dataset_name)
+  rpart.plot(tree_model, type = 1, extra = 101, main = main_title)  # extra = 101 shows the number of observations
+  
+  # Make predictions
+  predictions <- predict(tree_model, selected_columns)
+  
+  # Display the first few predictions
+  print(predictions)
+  
+  # Create a table to compare predicted and actual values
+  comparison_table <- table(Predicted = round(predictions), Actual = data$Severity)
+  
+  return(comparison_table)
+}
+
+comparison_table <- timeWeatherTree(cityData, "California")
+print(comparison_table)
+
+comparison_table <- timeWeatherTree(anaheimData, "Anaheim")
+print(comparison_table)
+
+comparison_table <- timeWeatherTree(sacramentoData, "Sacramento")
+print(comparison_table)
+
+comparison_table <- timeWeatherTree(sanDiegoData, "San Diego")
+print(comparison_table)
+
+comparison_table <- timeWeatherTree(sanFranciscoData, "San Francisco")
+print(comparison_table)
+
+comparison_table <- timeWeatherTree(losAngelesData, "Los Angeles")
+print(comparison_table)
+```
+
+```{r}
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+
+# Function to fit a decision tree model and make predictions
+binTimeTree <- function(data, dataset_name) {
+  # Select only the relevant columns
+  selected_columns <- data %>% 
+    select(Severity, Hour, time_difference)  
+  
+  # Fit the decision tree model with the selected columns
+  tree_model <- rpart(Severity ~ ., data = selected_columns)
+  
+  # Plot the decision tree with labels
+  main_title <- paste("Decision Tree for", dataset_name)
+  rpart.plot(tree_model, type = 1, extra = 101, main = main_title)  # extra = 101 shows the number of observations
+  
+  # Make predictions
+  predictions <- predict(tree_model, selected_columns)
+  
+  # Display the first few predictions
+  print(predictions)
+  
+  # Create a table to compare predicted and actual values
+  comparison_table <- table(Predicted = round(predictions), Actual = data$Severity)
+  
+  return(comparison_table)
+}
+
+comparison_table <- binTimeTree(cityData, "California")
+print(comparison_table)
+
+comparison_table <- binTimeTree(anaheimData, "Anaheim")
+print(comparison_table)
+
+comparison_table <- binTimeTree(sacramentoData, "Sacramento")
+print(comparison_table)
+
+comparison_table <- binTimeTree(sanDiegoData, "San Diego")
+print(comparison_table)
+
+comparison_table <- binTimeTree(sanFranciscoData, "San Francisco")
+print(comparison_table)
+
+comparison_table <- binTimeTree(losAngelesData, "Los Angeles")
+print(comparison_table)
+```
+
+```{r}
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+
+# Function to fit a decision tree model and make predictions
+binTimeSchoolTree <- function(data, dataset_name) {
+  # Select only the relevant columns
+  selected_columns <- data %>% 
+    select(Severity, Hour, time_difference, nearest_school_distance)  
+  
+  # Fit the decision tree model with the selected columns
+  tree_model <- rpart(Severity ~ ., data = selected_columns)
+  
+  # Plot the decision tree with labels
+  main_title <- paste("Decision Tree for", dataset_name)
+  rpart.plot(tree_model, type = 1, extra = 101, main = main_title)  # extra = 101 shows the number of observations
+  
+  # Make predictions
+  predictions <- predict(tree_model, selected_columns)
+  
+  # Display the first few predictions
+  print(predictions)
+  
+  # Create a table to compare predicted and actual values
+  comparison_table <- table(Predicted = round(predictions), Actual = data$Severity)
+  
+  return(comparison_table)
+}
+
+comparison_table <- binTimeTree(cityData, "California")
+print(comparison_table)
+
+comparison_table <- binTimeTree(anaheimData, "Anaheim")
+print(comparison_table)
+
+comparison_table <- binTimeTree(sacramentoData, "Sacramento")
+print(comparison_table)
+
+comparison_table <- binTimeTree(sanDiegoData, "San Diego")
+print(comparison_table)
+
+comparison_table <- binTimeTree(sanFranciscoData, "San Francisco")
+print(comparison_table)
+
+comparison_table <- binTimeTree(losAngelesData, "Los Angeles")
+print(comparison_table)
+```
+
+```{r}
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+
+# Function to fit a decision tree model and make predictions
+YearTree <- function(data, dataset_name) {
+  
+  selected_columns <- data %>% 
+    select(Severity, Year_Start, time_difference, `Distance(mi)`)  
+  
+  # Fit the decision tree model with the selected columns
+  tree_model <- rpart(Severity ~ ., data = selected_columns)
+  
+  # Plot the decision tree with labels
+  main_title <- paste("Decision Tree for", dataset_name)
+  rpart.plot(tree_model, type = 1, extra = 101, main = main_title)  # extra = 101 shows the number of observations
+  
+  # Make predictions
+  predictions <- predict(tree_model, selected_columns)
+  
+  # Display the first few predictions
+  print(predictions)
+  
+  # Create a table to compare predicted and actual values
+  comparison_table <- table(Predicted = round(predictions), Actual = data$Severity)
+  
+  return(comparison_table)
+}
+
+comparison_table <- allTree(cityData, "California")
+print(comparison_table)
+
+comparison_table <- allTree(anaheimData, "Anaheim")
+print(comparison_table)
+
+comparison_table <- allTree(sacramentoData, "Sacramento")
+print(comparison_table)
+
+comparison_table <- allTree(sanDiegoData, "San Diego")
+print(comparison_table)
+
+comparison_table <- allTree(sanFranciscoData, "San Francisco")
+print(comparison_table)
+
+comparison_table <- allTree(losAngelesData, "Los Angeles")
+print(comparison_table)
+```
+
+```{r}
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+
+# Function to fit a decision tree model and make predictions
+distanceTree <- function(data, dataset_name) {
+  
+  selected_columns <- data %>% 
+    select(Severity, `Distance(mi)`, Hour)  
+  
+  # Fit the decision tree model with the selected columns
+  tree_model <- rpart(Severity ~ ., data = selected_columns)
+  
+  # Plot the decision tree with labels
+  main_title <- paste("Decision Tree for", dataset_name)
+  rpart.plot(tree_model, type = 1, extra = 101, main = main_title)  # extra = 101 shows the number of observations
+  
+  # Make predictions
+  predictions <- predict(tree_model, selected_columns)
+  
+  # Display the first few predictions
+  print(predictions)
+  
+  # Create a table to compare predicted and actual values
+  comparison_table <- table(Predicted = round(predictions), Actual = data$Severity)
+  
+  return(comparison_table)
+}
+
+comparison_table <- distanceTree(cityData, "California")
+print(comparison_table)
+
+comparison_table <- distanceTree(anaheimData, "Anaheim")
+print(comparison_table)
+
+comparison_table <- distanceTree(sacramentoData, "Sacramento")
+print(comparison_table)
+
+comparison_table <- distanceTree(sanDiegoData, "San Diego")
+print(comparison_table)
+
+comparison_table <- distanceTree(sanFranciscoData, "San Francisco")
+print(comparison_table)
+
+comparison_table <- distanceTree(losAngelesData, "Los Angeles")
+print(comparison_table)
+```
+
+```{r}
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+
+# Function to fit a decision tree model and make predictions
+pcaResultTree <- function(data, dataset_name) {
+  
+  selected_columns <- data %>% 
+    select(Severity, Start_Lat, Start_Lng, `Distance(mi)`, `Temperature(F)`,
+           `Wind_Chill(F)`, `Humidity(%)`, `Pressure(in)`, `Visibility(mi)`,
+           `Wind_Speed(mph)`, `Precipitation(in)`, Weather_Condition, Amenity, 
+           Bump, Crossing, Give_Way)
+  
+  # Fit the decision tree model with the selected columns
+  tree_model <- rpart(Severity ~ ., data = selected_columns)
+  
+  # Plot the decision tree with labels
+  main_title <- paste("Decision Tree for", dataset_name)
+  rpart.plot(tree_model, type = 1, extra = 101, main = main_title)  # extra = 101 shows the number of observations
+  
+  # Make predictions
+  predictions <- predict(tree_model, selected_columns)
+  
+  # Display the first few predictions
+  print(predictions)
+  
+  # Create a table to compare predicted and actual values
+  comparison_table <- table(Predicted = round(predictions), Actual = data$Severity)
+  
+  return(comparison_table)
+}
+
+comparison_table <- pcaResultTree(cityData, "California")
+print(comparison_table)
+
+comparison_table <- pcaResultTree(anaheimData, "Anaheim")
+print(comparison_table)
+
+comparison_table <- pcaResultTree(sacramentoData, "Sacramento")
+print(comparison_table)
+
+comparison_table <- pcaResultTree(sanDiegoData, "San Diego")
+print(comparison_table)
+
+comparison_table <- pcaResultTree(sanFranciscoData, "San Francisco")
+print(comparison_table)
+
+comparison_table <- pcaResultTree(losAngelesData, "Los Angeles")
+print(comparison_table)
+```
