@@ -1,0 +1,79 @@
+---
+title: "K Mode
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+
+```{r}
+# Install and load the klaR package
+install.packages("klaR")
+library(klaR)
+```
+
+```{r}
+library(ggplot2)
+library(ggfortify)
+library(dplyr)
+library(readr)
+
+# Read multiple CSV files into a list
+file_list <- list.files(path = "/Users/ryancabral/Documents/CMPT 491/Datasets/CityData", pattern = "*.csv", full.names = TRUE)
+data_list <- lapply(file_list, read_csv)
+
+# Merge all data frames in the list into one data frame
+cityData <- bind_rows(data_list)
+
+cityData <- cityData %>%
+  mutate(
+    start_time = as.POSIXct(paste(Date_Start, Time_Start), format = "%Y-%m-%d %H:%M:%S"),
+    end_time = as.POSIXct(paste(Date_End, Time_End), format = "%Y-%m-%d %H:%M:%S"),
+    time_difference = as.numeric(difftime(end_time, start_time, units = "mins"))
+  )
+
+cityData <- cityData %>% mutate(Time_Start = as.POSIXct(Time_Start))
+cityData <- cityData %>%
+  mutate(Hour = format(Time_Start, "%H") %>% as.integer(),
+         Time_Bin = cut(Hour, breaks = seq(0, 24, by = 3), include.lowest = TRUE, right = FALSE, labels = FALSE))
+
+sacramentoData <- cityData %>% filter(City == "Sacramento")
+sanDiegoData <-  cityData %>% filter(City == "San Diego")
+losAngelesData <- cityData %>% filter(City == "Los Angeles")
+anaheimData <- cityData %>% filter(City == "Anaheim")
+sanFranciscoData <- cityData %>% filter(City == "San Francisco")
+
+# Display the merged data frame
+print(cityData)
+# Assume cityData is your dataframe
+write.csv(cityData, file = "cityData.csv", row.names = FALSE)
+```
+
+
+```{r}
+library(ggplot2)
+library(ggfortify)
+library(dplyr)
+library(readr)
+# Specify the file path for the cityData.csv file
+file_path <- "/Users/ryancabral/Documents/CMPT 491/Datasets/CityData/cityData.csv"
+
+# Read in the cityData.csv file
+cityData <- read_csv(file_path)
+sacramentoData <- cityData %>% filter(City == "Sacramento")
+sanDiegoData <-  cityData %>% filter(City == "San Diego")
+losAngelesData <- cityData %>% filter(City == "Los Angeles")
+anaheimData <- cityData %>% filter(City == "Anaheim")
+sanFranciscoData <- cityData %>% filter(City == "San Francisco")
+
+print(cityData)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
