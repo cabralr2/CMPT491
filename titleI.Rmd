@@ -1,0 +1,243 @@
+---
+title: "K Mode
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+
+```{r}
+# Install and load the klaR package
+install.packages("klaR")
+library(klaR)
+```
+
+```{r}
+library(ggplot2)
+library(ggfortify)
+library(dplyr)
+library(readr)
+
+# Read multiple CSV files into a list
+file_list <- list.files(path = "C://Users//KCSha//OneDrive//Desktop//CMPT 491//Datasets//CityData", pattern = "*.csv", full.names = TRUE)
+# Read and convert each file to ensure Time_Start is consistent
+data_list <- lapply(file_list, function(file) {
+  # Read the CSV file
+  data <- read_csv(file)
+  
+  # Ensure Time_Start is in POSIXct format (datetime)
+  data <- data %>%
+    mutate(Time_Start = as.POSIXct(Time_Start, format = "%Y-%m-%d %H:%M:%S", tz = "UTC"))
+  
+  return(data)
+})
+
+# Now merge all the data frames in the list
+cityData <- bind_rows(data_list)
+
+cityData <- cityData %>%
+  mutate(
+    start_time = as.POSIXct(paste(Date_Start, Time_Start), format = "%Y-%m-%d %H:%M:%S"),
+    end_time = as.POSIXct(paste(Date_End, Time_End), format = "%Y-%m-%d %H:%M:%S"),
+    time_difference = as.numeric(difftime(end_time, start_time, units = "mins"))
+  )
+
+cityData <- cityData %>% mutate(Time_Start = as.POSIXct(Time_Start))
+cityData <- cityData %>%
+  mutate(Hour = format(Time_Start, "%H") %>% as.integer(),
+         Time_Bin = cut(Hour, breaks = seq(0, 24, by = 3), include.lowest = TRUE, right = FALSE, labels = FALSE))
+
+sacramentoData <- cityData %>% filter(City == "Sacramento")
+sanDiegoData <-  cityData %>% filter(City == "San Diego")
+losAngelesData <- cityData %>% filter(City == "Los Angeles")
+anaheimData <- cityData %>% filter(City == "Anaheim")
+sanFranciscoData <- cityData %>% filter(City == "San Francisco")
+
+# Display the merged data frame
+print(cityData)
+# Assume cityData is your dataframe
+write.csv(cityData, file = "C://Users//KCSha//OneDrive//Desktop//CMPT 491//Datasets//CityData//cityData.csv", row.names = FALSE)
+```
+
+
+```{r}
+library(ggplot2)
+library(ggfortify)
+library(dplyr)
+library(readr)
+# Specify the file path for the cityData.csv file
+file_path <- "C://Users//KCSha//OneDrive//Desktop//CMPT 491//Datasets//CityData//cityData.csv"
+
+# Read in the cityData.csv file
+cityData <- read_csv(file_path)
+sacramentoData <- cityData %>% filter(City == "Sacramento")
+sanDiegoData <-  cityData %>% filter(City == "San Diego")
+losAngelesData <- cityData %>% filter(City == "Los Angeles")
+anaheimData <- cityData %>% filter(City == "Anaheim")
+sanFranciscoData <- cityData %>% filter(City == "San Francisco")
+
+print(cityData)
+```
+
+
+```{r}
+school_data <- read_csv("C://Users//KCSha//Downloads//Cleaned_SchoolSites_23-24.csv")
+
+# Assuming 'accident_data' and 'school_data' are your datasets
+# Join the two datasets using the School_ID
+# Join the accident data and school data
+merged_data <- cityData %>%
+  left_join(school_data, by = c("nearest_school_id" = "OBJECTID"))
+
+
+# Ensure data is clean
+merged_data <- merged_data %>%
+  filter(!is.na(`Title.I`) & !is.na(Severity))
+
+```
+
+```{r}
+# Count accidents by Title I status
+accident_frequency <- merged_data %>%
+  group_by(Title.I) %>%  # Use Title.I without backticks
+  summarise(
+    Total_Accidents = n(),  # Count the number of accidents for each Title I status
+    Mean_Severity = mean(Severity, na.rm = TRUE),  # Handle missing values
+    Median_Severity = median(Severity, na.rm = TRUE)  # Handle missing values
+  )
+print(accident_frequency)
+
+```
+
+```{r}
+# Filter accidents within 1 mile of the nearest school
+filtered_data <- merged_data %>%
+  filter(school_within_0.25mi)
+
+```
+
+```{r}
+
+# Summarize key predictors
+summary(filtered_data$nearest_school_distance)
+summary(filtered_data$`Title.I`)
+
+filtered_data
+```
+
+```{r}
+# Count accidents by Title I status
+accident_frequency <- filtered_data %>%
+  group_by(Title.I) %>%  # Use Title.I without backticks
+  summarise(
+    Total_Accidents = n(),  # Count the number of accidents for each Title I status
+    Mean_Severity = mean(Severity, na.rm = TRUE),  # Handle missing values
+    Median_Severity = median(Severity, na.rm = TRUE)  # Handle missing values
+  )
+print(accident_frequency)
+```
+
+```{r}
+ggplot(filtered_data, aes(x = factor(Title.I, labels = c("Non-Title I", "Title I")), y = Severity, fill = factor(Title.I))) +
+  geom_boxplot() +
+  labs(
+    title = "Severity by Title I Status",
+    x = "Title I Status",
+    y = "Severity"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+filtered_data %>%
+  group_by(Title.I) %>%
+  summarise(
+    Count = n(),
+    Mean_Severity = mean(Severity, na.rm = TRUE),
+    Median_Severity = median(Severity, na.rm = TRUE),
+    SD_Severity = sd(Severity, na.rm = TRUE)
+  )
+
+```
+
+```{r}
+t.test(Severity ~ Title.I, data = filtered_data)
+
+```
+
+```{r}
+wilcox.test(Severity ~ Title.I, data = filtered_data)
+
+```
+
+```{r}
+ggplot(filtered_data, aes(x = factor(Title.I, labels = c("Non-Title I", "Title I")), y = Severity, fill = factor(Title.I))) +
+  geom_violin(trim = FALSE) +
+  geom_boxplot(width = 0.2, alpha = 0.5) +
+  labs(
+    title = "Distribution of Accident Severity by Title I Status",
+    x = "Title I Status",
+    y = "Severity",
+    fill = "Title I Status"
+  ) +
+  theme_minimal()
+
+```
+
+
+
+```{r}
+ggplot(filtered_data, aes(x = Severity, fill = factor(Title.I, labels = c("Non-Title I", "Title I")))) +
+  geom_density(alpha = 0.5) +
+  labs(
+    title = "Density Plot of Severity by Title I Status",
+    x = "Severity",
+    y = "Density",
+    fill = "Title I Status"
+  ) +
+  theme_minimal()
+
+
+```
+
+```{r}
+# Fit a linear model to explore predictors of severity
+model <- lm(Severity ~ Title.I, data = filtered_data)
+summary(model)
+
+
+```
+
+```{r}
+model_extended <- lm(Severity ~ Title.I + Weather_Condition + Start_Time, data = filtered_data)
+summary(model_extended)
+
+
+# the coefficient for Title.I remains consistent with earluer, indicating that Title.I status is associated with a 0.0867 point increase in severity
+#the multiple R-squared and adjusted r squared indicate about 7.3% of the variability in accident severity is explained by this model
+```
+
+```{r}
+filtered_data$Weather_Condition <- as.factor(filtered_data$Weather_Condition)
+
+# Refit the model
+model <- lm(Severity ~ Title.I + Weather_Condition + Start_Time, data = filtered_data)
+summary(model)
+
+```
+
+```{r}
+ggplot(filtered_data, aes(x = Weather_Condition, y = Severity, fill = factor(Title.I))) +
+  geom_boxplot() +
+  labs(
+    title = "Severity Distribution by Weather Condition and Title I Status",
+    x = "Weather Condition",
+    y = "Severity",
+    fill = "Title I Status"
+  ) +
+  theme_minimal()
+
+```
