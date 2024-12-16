@@ -21,10 +21,20 @@ library(dplyr)
 library(readr)
 
 # Read multiple CSV files into a list
-file_list <- list.files(path = "/Users/ryancabral/Documents/CMPT 491/Datasets/CityData", pattern = "*.csv", full.names = TRUE)
-data_list <- lapply(file_list, read_csv)
+file_list <- list.files(path = "C://Users//KCSha//OneDrive//Desktop//CMPT 491//Datasets//CityData", pattern = "*.csv", full.names = TRUE)
+# Read and convert each file to ensure Time_Start is consistent
+data_list <- lapply(file_list, function(file) {
+  # Read the CSV file
+  data <- read_csv(file)
+  
+  # Ensure Time_Start is in POSIXct format (datetime)
+  data <- data %>%
+    mutate(Time_Start = as.POSIXct(Time_Start, format = "%Y-%m-%d %H:%M:%S", tz = "UTC"))
+  
+  return(data)
+})
 
-# Merge all data frames in the list into one data frame
+# Now merge all the data frames in the list
 cityData <- bind_rows(data_list)
 
 cityData <- cityData %>%
@@ -48,7 +58,7 @@ sanFranciscoData <- cityData %>% filter(City == "San Francisco")
 # Display the merged data frame
 print(cityData)
 # Assume cityData is your dataframe
-write.csv(cityData, file = "cityData.csv", row.names = FALSE)
+write.csv(cityData, file = "C://Users//KCSha//OneDrive//Desktop//CMPT 491//Datasets//CityData//cityData.csv", row.names = FALSE)
 ```
 
 
@@ -58,7 +68,7 @@ library(ggfortify)
 library(dplyr)
 library(readr)
 # Specify the file path for the cityData.csv file
-file_path <- "/Users/ryancabral/Documents/CMPT 491/Datasets/CityData/cityData.csv"
+file_path <- "C://Users//KCSha//OneDrive//Desktop//CMPT 491//Datasets//CityData//cityData.csv"
 
 # Read in the cityData.csv file
 cityData <- read_csv(file_path)
@@ -70,10 +80,339 @@ sanFranciscoData <- cityData %>% filter(City == "San Francisco")
 
 print(cityData)
 ```
+```{r}
+colnames(cityData)
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+```
+```{r}
+data_numeric <- cityData[sapply(cityData, is.numeric)]  # Select only numeric columns
+data_scaled <- scale(data_numeric)  # Standardize only numeric columns
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+```
+```{r}
+# Remove columns with NA values
+data_scaled <- data_scaled[, colSums(is.na(data_scaled)) == 0]
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+# Remove constant columns (zero variance)
+data_scaled <- data_scaled[, apply(data_scaled, 2, var) != 0]
+
+# If you prefer to impute missing values instead of removing them:
+# data_scaled[is.na(data_scaled)] <- apply(data_scaled, 2, function(x) mean(x, na.rm = TRUE))
+
+# Check the variance of the cleaned data
+var(data_scaled)
+
+# Perform PCA
+pca_model <- prcomp(data_scaled, center = TRUE, scale. = TRUE)
+
+# View PCA results
+summary(pca_model)
+
+
+```
+
+```{r}
+# Get the scores (principal component scores) from the PCA
+pca_scores <- pca_model$x
+# Select the first 10 principal components
+reduced_data <- pca_scores[, 1:15]
+
+```
+
+```{r}
+# Perform k-means clustering on the reduced data (e.g., k = 3 clusters)
+set.seed(123)  # Set a seed for reproducibility
+kmeans_result <- kmeans(reduced_data, centers = 3)
+
+# View the cluster assignments
+kmeans_result$cluster
+
+```
+
+```{r}
+# Plotting the first two principal components with cluster labels
+library(ggplot2)
+reduced_data_with_cluster <- cbind(reduced_data, cluster = as.factor(kmeans_result$cluster))
+ggplot(reduced_data_with_cluster, aes(x = PC1, y = PC2, color = cluster)) +
+  geom_point() +
+  labs(title = "Clustering with PCA (First 2 Components)")
+
+```
+
+```{r}
+# Assuming you already have your cluster assignments (from k-means)
+clusters <- kmeans_result$cluster
+
+# Add the cluster assignments to your original data
+cityData$cluster <- kmeans_result$cluster
+
+
+```
+
+
+```{r}
+library(ggplot2)
+
+# PCA plot with clusters in 2D space
+ggplot(cityData, aes(x = pca_result$x[, 1], y = pca_result$x[, 2], color = factor(cluster))) +
+  geom_point() +
+  labs(title = "PCA Clusters", x = "PC1", y = "PC2", color = "Cluster") +
+  theme_minimal()
+
+```
+
+```{r}
+# Calculate WCSS for different values of k
+wcss <- sapply(1:10, function(k) {
+  kmeans(cityData, centers = k)$tot.withinss
+})
+
+# Plot WCSS vs. number of clusters
+plot(1:10, wcss, type = 'b', main = "Elbow Method for Optimal k", xlab = "Number of Clusters", ylab = "WCSS")
+
+
+```
+
+```{r}
+# Load required libraries
+library(ggplot2)
+library(cluster)
+
+# Perform PCA on the original dataset
+pca_result <- prcomp(cityData[, c('Severity', 'Distance(mi)', 'Temperature(F)', 'Humidity(%)', 
+                                  'Visibility(mi)', 'Wind_Speed(mph)', 'Precipitation(in)', 'Weather_Condition', 'Traffic_Signal')], 
+                                  scale = TRUE)
+
+# Extract the first two principal components for clustering
+pca_data <- as.data.frame(pca_result$x[, 1:2])
+
+# Perform K-means clustering (Choose number of clusters, e.g., 3)
+set.seed(123)  # For reproducibility
+kmeans_result <- kmeans(pca_data, centers = 3)
+
+# Add cluster assignments to the PCA data
+pca_data$Cluster <- as.factor(kmeans_result$cluster)
+
+# Plot PCA components with clusters
+ggplot(pca_data, aes(x = PC1, y = PC2, color = Cluster)) +
+  geom_point(size = 2) +
+  labs(title = "PCA Clusters", x = "PC1", y = "PC2") +
+  theme_minimal() +
+  scale_color_manual(values = c("red", "green", "blue"))
+
+```
+
+```{r}
+# View the cluster centers (centroids)
+kmeans_result$centers
+# Add cluster assignments to the original dataset
+cityData$Cluster <- as.factor(kmeans_result$cluster)
+
+# View the first few rows with cluster assignments
+head(cityData)
+
+```
+
+```{r}
+# Summary statistics by cluster
+library(dplyr)
+summary_by_cluster <- cityData %>%
+  group_by(Cluster) %>%
+  summarise(across(c(Severity, `Distance(mi)`, `Temperature(F)`, `Humidity(%)`, 
+                     `Visibility(mi)`, `Wind_Speed(mph)`, `Precipitation(in)`, 
+                     `Sunrise_Sunset`, `Weather_Condition`), 
+                   list(mean = mean, sd = sd), na.rm = TRUE))
+
+# View the summary
+print(summary_by_cluster)
+
+```
+```{r}
+# Example: Visualize Severity vs Temperature by Cluster
+ggplot(cityData, aes(x = `Temperature(F)`, y = Severity, color = Cluster)) +
+  geom_point() +
+  labs(title = "Severity vs Temperature by Cluster", x = "Temperature (F)", y = "Severity") +
+  theme_minimal()
+
+```
+
+```{r}
+ggplot(cityData, aes(x = `Wind_Speed(mph)`, y = Severity, color = as.factor(Cluster))) +
+  geom_point() +
+  labs(title = "Severity vs Wind Speed by Cluster", 
+       x = "Wind Speed (mph)", y = "Severity", 
+       color = "Cluster") +
+  theme_minimal()
+
+
+```
+
+```{r}
+ggplot(cityData, aes(x = `Visibility(mi)`, y = Severity, color = as.factor(Cluster))) +
+  geom_point() +
+  labs(title = "Severity vs Visibility by Cluster", 
+       x = "Visibility (miles)", y = "Severity", 
+       color = "Cluster") +
+  theme_minimal()
+
+```
+
+```{r}
+ggplot(cityData, aes(x = `Precipitation(in)`, y = Severity, color = as.factor(Cluster))) +
+  geom_point() +
+  labs(title = "Severity vs Precipitation by Cluster", 
+       x = "Precipitation (inches)", y = "Severity", 
+       color = "Cluster") +
+  theme_minimal()
+
+```
+
+```{r}
+ggplot(cityData, aes(x = `Humidity(%)`, y = `Wind_Speed(mph)`, color = as.factor(Cluster))) +
+  geom_point() +
+  labs(title = "Humidity vs Wind Speed by Cluster", 
+       x = "Humidity (%)", y = "Wind Speed (mph)", 
+       color = "Cluster") +
+  theme_minimal()
+
+```
+
+```{r}
+library(GGally)
+ggpairs(cityData, 
+        columns = c('Severity', 'Wind_Speed(mph)', 'Visibility(mi)', 'Precipitation(in)', 'Temperature(F)', 'Humidity(%)'),
+        aes(color = as.factor(Cluster)))
+
+```
+
+```{r}
+library(corrplot)
+
+# Compute correlation matrix
+corr_matrix <- cor(cityData[, c('Severity', 'Distance(mi)', 'Temperature(F)', 'Humidity(%)', 'Visibility(mi)', 'Wind_Speed(mph)', 'Precipitation(in)', 'Sunrise_Sunset')])
+
+# Plot heatmap
+corrplot(corr_matrix, method = "color", type = "upper", 
+         tl.cex = 0.8, tl.col = "black", 
+         addCoef.col = "black", 
+         diag = FALSE)
+
+
+```
+
+```{r}
+library(rgl)
+
+# Select three variables for the 3D plot
+selected_data <- cityData[, c('Temperature(F)', 'Humidity(%)', 'Visibility(mi)')]
+
+# Create the 3D scatter plot
+plot3d(selected_data$`Temperature(F)`, selected_data$`Humidity(%)`, selected_data$`Visibility(mi)`, 
+       col = as.factor(cityData$Cluster), size = 5, xlab = "Temperature (F)", 
+       ylab = "Humidity (%)", zlab = "Visibility (mi)")
+
+```
+
+
+```{r}
+ggplot(cityData, aes(x = `Humidity(%)`, y = `Visibility(mi)`, color = as.factor(Cluster))) +
+  geom_point() +
+  labs(title = "Humidity vs Visibility by Cluster", 
+       x = "Humidity (%)", y = "Visibility(mi)", 
+       color = "Cluster") +
+  theme_minimal()
+
+```
+
+```{r}
+ggplot(cityData, aes(x = `Humidity(%)`, y = `Temperature(F)`, color = as.factor(Cluster))) +
+  geom_point() +
+  labs(title = "Humidity vs Temperature by Cluster", 
+       x = "Humidity (%)", y = "Temperature(F)", 
+       color = "Cluster") +
+  theme_minimal()
+
+```
+
+```{r}
+ggplot(cityData, aes(x = `Visibility(mi)`, y = `Temperature(F)`, color = as.factor(Cluster))) +
+  geom_point() +
+  labs(title = "Visibility vs Temperature by Cluster", 
+       x = "Visibility (mi)", y = "Temperature (F)", 
+       color = "Cluster") +
+  theme_minimal()
+
+```
+
+```{r}
+# Load required libraries
+library(ggplot2)
+library(cluster)
+
+# Perform PCA on the original dataset
+pca_result_2 <- prcomp(cityData[, c('Severity', 'Distance(mi)', 'Temperature(F)', 'Humidity(%)', 
+                                  'Visibility(mi)', 'Wind_Speed(mph)', 'Precipitation(in)', 'Weather_Condition', 'Traffic_Signal')], 
+                                  scale = TRUE)
+summary(pca_result_2)
+
+# Extract the first two principal components for clustering
+pca_data_2 <- as.data.frame(pca_result_2$x[, 1:15])
+
+# Perform K-means clustering (Choose number of clusters, e.g., 3)
+set.seed(123)  # For reproducibility
+kmeans_result_2 <- kmeans(pca_data_2, centers = 3)
+
+# Add cluster assignments to the PCA data
+pca_data_2$Cluster <- as.factor(kmeans_result_2$cluster)
+
+# Plot PCA components with clusters
+ggplot(pca_data_2, aes(x = PC1, y = PC2, color = Cluster)) +
+  geom_point(size = 2) +
+  labs(title = "PCA Clusters", x = "PC1", y = "PC2") +
+  theme_minimal() +
+  scale_color_manual(values = c("red", "green", "blue"))
+
+```
+
+```{r}
+
+cityData_summary <- cityData %>%
+  group_by(Time_Bin, Weather_Condition, Severity) %>%
+  summarize(Count = n(), .groups = 'drop') %>%
+  mutate(proportion = Count/ sum(Count))
+print(cityData_summary)
+
+library(ggplot2)
+
+# Create the bar plot
+plot1 <- ggplot(cityData, aes(x = Time_Bin, fill = Weather_Condition)) +
+  geom_bar(position = "dodge") +  # Grouped bars
+  labs(title = "Weather condition by Time bin", x = "Time Bin", y = "Count", fill = "Weather Condition") +
+  theme_minimal()
+
+# Display the plot
+print(plot1)
+
+# Create the proportional bar plot
+plot2 <- ggplot(cityData_summary, aes(x = factor(Time_Bin), y = proportion, fill = factor(Weather_Condition))) +
+  geom_bar(stat = "identity",position = "fill") +  
+# Bars filled to show proportions
+  labs(title = "Proportion of Weather Conditions by Time Bin", x = "Time Bin", y = "Proportion", fill = "Weather Condition") +
+  #scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
+  theme_minimal()
+
+# Display the plot
+print(plot2)
+
+# Create the proportional bar plot
+plot3 <- ggplot(cityData_summary, aes(x = factor(Time_Bin), y = proportion, fill = factor(Severity))) +
+  geom_bar(stat = "identity",position = "fill") +  
+# Bars filled to show proportions
+  labs(title = "Proportion of Severity by Time Bin", x = "Time Bin", y = "Proportion", fill = "Severity") +
+  #scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
+  theme_minimal()
+
+# Display the plot
+print(plot3)
+```
 
